@@ -9,6 +9,7 @@ from state import data
 
 from sentence_transformers import SentenceTransformer
 import pandas as pd
+import re
 
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
@@ -31,7 +32,8 @@ def text_cleaner(text):
     
     return text
 
-def semantic_vectors(clean_text):
+def semantic_vectors(text):
+    clean_text = text_cleaner(text)
     sem_vec = model.encode(clean_text)
 
     return sem_vec

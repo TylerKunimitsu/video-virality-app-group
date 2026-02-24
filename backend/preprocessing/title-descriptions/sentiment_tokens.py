@@ -45,4 +45,4 @@ def count_tokens(text):
 data['description_sentiment'] = data['description'].apply(analyze_sentiment)
 data['description_tokens'] = data['description'].apply(count_tokens)
 
-print(data[['description_sentiment', 'description_tokens']].head(1))
+#print(data[['description_sentiment', 'description_tokens']].head(1))
