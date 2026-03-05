@@ -37,7 +37,7 @@ output = layers.Dense(2, activation='linear', name='Results')(x)
 
 # Defining model
 
-model = models.Model(inputs=[x1_input, x2_input, x3_input, x4_input], outputs=output)
+model = models.Model(inputs=[x2_input, x3_input], outputs=output)
 model.compile(optimizer='adam', loss='mse')
 
 # Fitting data into the model
@@ -57,7 +57,7 @@ y = data[['views', 'likes']]
 
 # Training the model
 model.fit(
-    x={'Group1_Input': x_group1, 'Group2_Input': x_group2, 'Group3_Input': x_group3, 'Group4_Input': x_group4},
+    x={'Group2_Input': x_group2, 'Group3_Input': x_group3},
     y=y,
     epochs=100
 )
