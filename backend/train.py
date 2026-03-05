@@ -5,6 +5,7 @@ from tensorflow.keras import layers, models
 import pandas as pd
 import numpy as np
 
+
 # Setting up tf inputs
 
 #x1 -> image
@@ -30,7 +31,7 @@ x3 = layers.BatchNormalization()(x3)
 
 # Merging nodes (concatenating)
 
-merged = layers.Concatenate()([x1, x2, x3, x4])
+merged = layers.Concatenate()([x2, x3])
 
 x = layers.Dense(32, activation='relu')(merged)
 output = layers.Dense(2, activation='linear', name='Results')(x)
