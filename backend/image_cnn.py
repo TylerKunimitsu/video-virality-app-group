@@ -1,15 +1,17 @@
 import pandas as pd
 import numpy as np
+import io
+from google.cloud import storage # pip install google-cloud-storage
 
-print("Loading preprocessed data...")
+# Read CSV directly from the bucket
+df = pd.read_csv('gs://virality/processed_metadata.csv')
 
-# 1. Load the text and metadata
-# df = pd.read_csv('processed_metadata.csv')
+# Reading a massive .npy file from a bucket takes a few extra lines 
+# because NumPy needs to download the byte stream:
+client = storage.Client()
+bucket = client.get_bucket('virality')
+blob = bucket.blob('processed_images.npy')
 
-# 2. Load the image tensors
-X_images = np.load('processed_images.npy')
-
-# print(f"Successfully loaded {len(df)} rows of text data.")
-print(f"Successfully loaded image tensor with shape: {X_images.shape}")
-
-# Now you are ready to pass X_images into your model!
+# Download as a byte string and load into NumPy
+byte_stream = io.BytesIO(blob.download_as_bytes())
+X_images = np.load(byte_stream)

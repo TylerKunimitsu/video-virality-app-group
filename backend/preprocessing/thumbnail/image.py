@@ -12,6 +12,7 @@ from PIL import Image, ImageOps
 from io import BytesIO
 import numpy as np
 import pandas as pd
+import gcsfs # You may need to pip install gcsfs
 
 
 def preprocess_thumbnail_pad(url, target_size=(224, 224), pad_color=(0, 0, 0)): 
@@ -81,6 +82,20 @@ data.drop(index=indices_to_drop, inplace=True)
 # 4. Reset the index so your rows are numbered cleanly (0, 1, 2...) again
 data.reset_index(drop=True, inplace=True)
 
+# --- Save the Data ---
+
+# 1. Save the cleaned DataFrame (Titles, Descriptions, Labels)
+csv_filename = 'processed_metadata.csv'
+clean_df.to_csv(csv_filename, index=False)
+print(f"Saved text data to {csv_filename}")
+
+# 2. Save the massive Image Array
+# np.save automatically compresses the array into a binary .npy file
+npy_filename = 'processed_images.npy'
+np.save(npy_filename, X_images)
+print(f"Saved image tensor to {npy_filename}") 
+
+
 print("--- Processing Complete ---")
 print(f"Total dead links dropped: {len(indices_to_drop)}")
 print(f"Final dataset rows in 'df': {len(data)}")
@@ -107,3 +122,8 @@ print(f"Average pixel value: {X_images.mean()}")
 # Since the image is 224x224, the exact center is at coordinates 112, 112.
 center_pixel = X_images[0, 112, 112, :]
 print(f"Center pixel RGB values: {center_pixel}")
+
+
+# Save CSV directly to your Google Cloud bucket
+bucket_path_csv = 'gs://virality/processed_metadata.csv'
+clean_df.to_csv(bucket_path_csv, index=False)
