@@ -1,19 +1,17 @@
 import sys
 from pathlib import Path
-
-root_dir = Path(__file__).resolve().parent.parent.parent
-
-sys.path.insert(0, str(root_dir))
-
-from state import data # use data for csv file
-
 import requests
 from PIL import Image, ImageOps
 from io import BytesIO
 import numpy as np
 import pandas as pd
-import gcsfs # You may need to pip install gcsfs
 
+# 1. Dynamically locate the backend directory and the CSV file
+root_dir = Path(__file__).resolve().parent.parent.parent
+csv_path = root_dir / 'simplifiedUSvideos.csv'
+
+# Add root_dir to sys.path if you still need to import other things from backend
+sys.path.insert(0, str(root_dir)) 
 
 def preprocess_thumbnail_pad(url, target_size=(224, 224), pad_color=(0, 0, 0)): 
     """
@@ -21,109 +19,67 @@ def preprocess_thumbnail_pad(url, target_size=(224, 224), pad_color=(0, 0, 0)):
     while maintaining aspect ratio, and pads the remaining space.
     """
     try:
-        # 1. Fetch the image from the URL
         response = requests.get(url, timeout=5)
         response.raise_for_status() 
         
-        # 2. Open the image and convert to RGB
         img = Image.open(BytesIO(response.content))
         img = img.convert('RGB')
         
-        # 3. Resize and Pad
-        # ImageOps.pad scales the image so the longest side matches 224.
-        # It then centers the image and fills the empty space with pad_color (black).
         img = ImageOps.pad(img, target_size, method=Image.Resampling.BICUBIC, color=pad_color)
         
-        # 4. Convert to a numpy array and normalize pixel values to [0, 1]
         img_array = np.array(img) / 255.0
-        
         return img_array
         
     except Exception as e:
+        # Keeping this print statement so you can see which URLs are failing
         print(f"Error loading {url}: {e}")
         return None
 
-# --- Example Usage ---
-sample_url = "https://i.ytimg.com/vi/2kyS6SvSYSE/default.jpg" 
-processed_image = preprocess_thumbnail_pad(sample_url)
+# 2. Load the CSV directly using Pandas
+print(f"Loading dataset from: {csv_path}")
+data = pd.read_csv(csv_path)
 
-if processed_image is not None:
-    print(f"Success! Image shape: {processed_image.shape}") 
-    # Output will be (224, 224, 3)
+# --- HEADS UP! ---
+# You have this set to 30 for testing. 
+# Make sure to delete or comment out this line when you want to clean the whole dataset!
+# data = data.head(30)
 
-data=data.head(30)
-
-# List to hold successful image arrays
+# Lists to hold data
 valid_images = []
-# List to hold the row numbers we need to delete
 indices_to_drop = []
 
 print("Starting thumbnail processing...")
 
+# 3. Iterate and find the bad rows
 for index, row in data.iterrows():
     url = row['thumbnail_link'] 
     
-    # Call your padding function
     img_array = preprocess_thumbnail_pad(url)
     
-    # Check if the download was successful
     if img_array is not None:
         valid_images.append(img_array)
     else:
-        # If the image fails (404 error), mark this row's index for deletion
         indices_to_drop.append(index)
 
-# 2. Convert the successful images into your final CNN input array
-X_images = np.array(valid_images)
-
-# 3. Drop the dead links from the original DataFrame in place
+# 4. Clean the DataFrame
 data.drop(index=indices_to_drop, inplace=True)
-
-# 4. Reset the index so your rows are numbered cleanly (0, 1, 2...) again
 data.reset_index(drop=True, inplace=True)
 
-# --- Save the Data ---
+# 5. Overwrite the original CSV file!
+data.to_csv(csv_path, index=False)
+print(f"\n--- SUCCESS: Overwrote original CSV at {csv_path} ---")
 
-# 1. Save the cleaned DataFrame (Titles, Descriptions, Labels)
-csv_filename = 'processed_metadata.csv'
-clean_df.to_csv(csv_filename, index=False)
-print(f"Saved text data to {csv_filename}")
+# ==========================================
+# 6. Save the Image Arrays locally to 'backend/'
+# ==========================================
+X_images = np.array(valid_images)
 
-# 2. Save the massive Image Array
-# np.save automatically compresses the array into a binary .npy file
-npy_filename = 'processed_images.npy'
-np.save(npy_filename, X_images)
-print(f"Saved image tensor to {npy_filename}") 
+# Since root_dir points to your main 'backend' folder, 
+# this saves the file directly into that folder.
+npy_path = root_dir / 'processed_images.npy'
 
-
-print("--- Processing Complete ---")
-print(f"Total dead links dropped: {len(indices_to_drop)}")
-print(f"Final dataset rows in 'df': {len(data)}")
+# Save the massive array locally
+np.save(npy_path, X_images)
+print(f"--- SUCCESS: Saved image tensor to {npy_path} ---")
 print(f"Final Image Tensor Shape: {X_images.shape}")
-print(data)
-print(X_images[0][223])
-print(X_images[0].shape)
 
-# Steps below are to verify that not all values are 0 in X_images
-
-
-# 1. Check the maximum value in the entire array
-# Since we normalized by dividing by 255.0, pure white is 1.0. 
-# This should print a number very close to 1.0!
-print(f"Maximum pixel value: {X_images.max()}")
-
-# 2. Check the average (mean) value
-# If the array was entirely zeroes, this would be 0. 
-# It should be a small decimal number greater than 0.
-print(f"Average pixel value: {X_images.mean()}")
-
-# 3. Look at a pixel right in the middle of the first image!
-# Array slicing format: [image_index, y_coordinate, x_coordinate, rgb_channels]
-# Since the image is 224x224, the exact center is at coordinates 112, 112.
-center_pixel = X_images[0, 112, 112, :]
-print(f"Center pixel RGB values: {center_pixel}")
-
-
-# Save CSV directly to your Google Cloud bucket
-bucket_path_csv = 'gs://virality/processed_metadata.csv'
-clean_df.to_csv(bucket_path_csv, index=False)
