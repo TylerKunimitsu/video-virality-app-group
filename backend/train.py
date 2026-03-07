@@ -1,7 +1,8 @@
 from state import data
 
 import tensorflow as tf
-from tensorflow.keras import layers, models
+from tensorflow.keras import layers, models, regularizers
+from sklearn.preprocessing import StandardScaler
 import pandas as pd
 import numpy as np
 
@@ -26,19 +27,27 @@ x3 = layers.Dropout(0.2)(x3)
 x3 = layers.Dense(32, activation='relu')(x3)
 x3 = layers.BatchNormalization()(x3)
 
-#x4 -> high d & categorical
+#x4 -> binarizer
+x4_input = layers.Input(shape=(500,), name='Group4_Input')
+x4 = layers.Dense(32, activation='relu', kernel_regularizer=regularizers.l1(0.01))(x4_input)
 
+#x5 -> main_tag
+x5_vocab = data['main_tag'].unique() # the "vocab list" for encoding the string
+x5_input = layers.Input(shape=(1,), dtype='string', name='Group5_Input')
+x5_encoded = layers.StringLookup(vocabulary=x5_vocab)(x5_input) # encode the string
+x5_embedding = layers.Embedding(input_dim=len(x5_vocab)+1, output_dim=4)(x5_encoded) # pass into an embedding layer to output a 4d vector (but in [[]] form) (like semantics for the correlations of main tags)
+x5_flat = layers.Flatten()(x5_embedding) # make matrix outputted by the embedding layer to 1d
 
 # Merging nodes (concatenating)
 
-merged = layers.Concatenate()([x2, x3])
+merged = layers.Concatenate()([x2, x3, x4, x5_flat])
 
 x = layers.Dense(32, activation='relu')(merged)
 output = layers.Dense(2, activation='linear', name='Results')(x)
 
 # Defining model
 
-model = models.Model(inputs=[x2_input, x3_input], outputs=output)
+model = models.Model(inputs=[x2_input, x3_input, x4_input, x5_input], outputs=output)
 model.compile(optimizer='adam', loss='mse')
 
 # Fitting data into the model
@@ -51,14 +60,25 @@ x_group1 = ...
 x_group2 = np.stack(data['description_semantics']) # Turns 1d array into (#rows, 384)
 
 #x3
-x_group3 = pd.concat([data[['title_cLength', 'title_hasNumber', 'title_capsRatio', 'title_exCount', 'title_endInQ', 'title_infoDensity', 'tags_count', 'tags_title_overlapRatio', 'description_tokens']], data['description_sentiment'][['Negative', 'Neutral', 'Positive']]], axis=1).values
+x3_sentiment = data['description_sentiment'].apply(pd.Series)
+x3_df = pd.concat([data[['title_cLength', 'title_hasNumber', 'title_capsRatio', 'title_exCount', 'title_endInQ', 'title_infoDensity', 'tags_count', 'tags_title_overlapRatio', 'description_tokenCounts']], x3_sentiment[['Negative', 'Neutral', 'Positive']]], axis=1)
+scaler = StandardScaler()
+x_group3 = scaler.fit_transform(x3_df.values)
+
+#x4
+x_group4 = np.array(data['topTagsBinarized'].tolist())
+
+#x5
+x_group5 = data['main_tag'].values
 
 #y
-y = data[['views', 'likes']]
+y = np.log1p(data[['views', 'likes']].values)
 
 # Training the model
 model.fit(
-    x={'Group2_Input': x_group2, 'Group3_Input': x_group3},
+    x={'Group2_Input': x_group2, 'Group3_Input': x_group3, 'Group4_Input': x_group4, 'Group5_Input': x_group5},
     y=y,
-    epochs=100
+    epochs=100,
+    batch_size=32,
+    validation_split=0.2 # monitoring overfitting
 )
