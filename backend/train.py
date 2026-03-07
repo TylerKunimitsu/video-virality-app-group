@@ -2,16 +2,22 @@ from state import data
 
 import tensorflow as tf
 from tensorflow.keras import layers, models, regularizers
+from tensorflow.keras.applications import EfficientNetB0 # for cnn
 from sklearn.preprocessing import StandardScaler
 import pandas as pd
 import numpy as np
+import h5py # for reading h5 file
 
 
 # Setting up tf inputs
 
 #x1 -> image
-x1_input = layers.Input(shape=..., name='Group1_Input')
-x1 = layers.Dense(...)(x1_input)
+x1_input = layers.Input(shape=(224, 224, 3), name='Group1_Input')
+base_model = EfficientNetB0(weights='imagenet', include_top=False)
+base_model.trainable = False # Freeze pre-trained weights
+x1 = base_model(x1_input)
+x1 = layers.GlobalAveragePooling2D()(x1)
+x1 = layers.Dense(128, activation='relu', name='Group1_Final')(x1)
 
 #x2 -> semantics
 x2_input = layers.Input(shape=(384,), name='Group2_Input')
@@ -40,21 +46,25 @@ x5_flat = layers.Flatten()(x5_embedding) # make matrix outputted by the embeddin
 
 # Merging nodes (concatenating)
 
-merged = layers.Concatenate()([x2, x3, x4, x5_flat])
+merged = layers.Concatenate()([x1, x2, x3, x4, x5_flat])
 
 x = layers.Dense(32, activation='relu')(merged)
 output = layers.Dense(2, activation='linear', name='Results')(x)
 
 # Defining model
 
-model = models.Model(inputs=[x2_input, x3_input, x4_input, x5_input], outputs=output)
+model = models.Model(inputs=[x1_input, x2_input, x3_input, x4_input, x5_input], outputs=output)
 model.compile(optimizer='adam', loss='mse')
 
 # Fitting data into the model
 # Turning data into correct forms (whatever input shape defined above)
 
+# Open the HDF5 vault in read mode
+hf = h5py.File('processed_images.h5', 'r')
+
 #x1 operations
-x_group1 = ...
+# Notice we DO NOT use [:] here. We just pass the dataset reference.
+x_group1 = hf['images']
 
 #x2
 x_group2 = np.stack(data['description_semantics']) # Turns 1d array into (#rows, 384)
@@ -76,9 +86,12 @@ y = np.log1p(data[['views', 'likes']].values)
 
 # Training the model
 model.fit(
-    x={'Group2_Input': x_group2, 'Group3_Input': x_group3, 'Group4_Input': x_group4, 'Group5_Input': x_group5},
+    x={'Group1_Input': x_group1, 'Group2_Input': x_group2, 'Group3_Input': x_group3, 'Group4_Input': x_group4, 'Group5_Input': x_group5},
     y=y,
     epochs=100,
     batch_size=32,
     validation_split=0.2 # monitoring overfitting
 )
+
+# Close the images file when training finishes
+hf.close()
