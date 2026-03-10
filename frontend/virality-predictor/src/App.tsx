@@ -1,0 +1,259 @@
+import { useState } from 'react';
+import { Eye, ThumbsUp, Upload, Play, FileText, MessageSquare, Image, Tag } from 'lucide-react';
+
+export default function App() {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [tags, setTags] = useState('');
+  const [thumbnail, setThumbnail] = useState(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState(null);
+  const [prediction, setPrediction] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleThumbnailChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setThumbnail(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setThumbnailPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    // 🔌 BACKEND CONNECTION NEEDED: Replace this mock API call with your actual backend endpoint
+    // Send the form data to your prediction API
+    // Example:
+    // const formData = new FormData();
+    // formData.append('title', title);
+    // formData.append('description', description);
+    // formData.append('tags', tags);
+    // if (thumbnail) formData.append('thumbnail', thumbnail);
+    // 
+    // const response = await fetch('YOUR_API_ENDPOINT', {
+    //   method: 'POST',
+    //   body: formData,
+    // });
+    // const data = await response.json();
+    // setPrediction({ views: data.predicted_views, likes: data.predicted_likes });
+
+    // Mock prediction (remove this when connecting to backend)
+    setTimeout(() => {
+      const mockViews = Math.floor(Math.random() * 1000000) + 10000;
+      const mockLikes = Math.floor(mockViews * (Math.random() * 0.15 + 0.05));
+      setPrediction({ views: mockViews, likes: mockLikes });
+      setIsLoading(false);
+    }, 1500);
+  };
+
+  const formatNumber = (num) => {
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'K';
+    }
+    return num.toString();
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-white via-red-50 to-white">
+      {/* YouTube-themed Header Bar */}
+      <div className="bg-white border-b-2 border-red-600 shadow-md sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-6 py-4">
+          <div className="flex items-center gap-3">
+            {/* YouTube Logo */}
+            <div className="flex items-center gap-2">
+              <div className="bg-red-600 rounded-lg p-2 shadow-lg">
+                <Play className="w-8 h-8 text-white fill-white" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-2xl tracking-tight" style={{ fontFamily: 'Arial, sans-serif' }}>
+                  <span className="text-gray-900">Virality</span>
+                  <span className="text-red-600">Predictor</span>
+                </span>
+                <span className="text-xs text-gray-500 -mt-1">Powered by YouTube Analytics</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto px-6 py-12">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <div className="inline-block bg-red-600 text-white px-6 py-3 rounded-full mb-4 shadow-lg">
+            <span className="text-lg">🎬 AI-Powered Predictions</span>
+          </div>
+          <h1 className="text-5xl mb-4 text-gray-900">
+            Will Your Video Go Viral?
+          </h1>
+          <p className="text-xl text-gray-600">
+            Get instant predictions on views and likes before you upload! 🚀
+          </p>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="bg-white border-2 border-red-100 rounded-2xl p-8 shadow-xl mb-8">
+          {/* Title Input */}
+          <div className="mb-6">
+            <label htmlFor="title" className="block mb-3 text-gray-800 flex items-center gap-3 text-xl">
+              <FileText className="w-6 h-6 text-red-600" /> Video Title
+            </label>
+            <input
+              id="title"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter your video title..."
+              required
+              className="w-full px-4 py-3 border-2 border-red-200 rounded-lg focus:border-red-600 focus:outline-none transition-colors bg-white hover:border-red-300"
+            />
+          </div>
+
+          {/* Description Input */}
+          <div className="mb-6">
+            <label htmlFor="description" className="block mb-3 text-gray-800 flex items-center gap-3 text-xl">
+              <MessageSquare className="w-6 h-6 text-red-600" /> Video Description
+            </label>
+            <textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Enter your video description..."
+              required
+              rows={4}
+              className="w-full px-4 py-3 border-2 border-red-200 rounded-lg focus:border-red-600 focus:outline-none transition-colors resize-none bg-white hover:border-red-300"
+            />
+          </div>
+
+          {/* Tags Input */}
+          <div className="mb-6">
+            <label htmlFor="tags" className="block mb-3 text-gray-800 flex items-center gap-3 text-xl">
+              <Tag className="w-6 h-6 text-red-600" /> Video Tags
+            </label>
+            <input
+              id="tags"
+              type="text"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="Enter video tags separated by commas..."
+              required
+              className="w-full px-4 py-3 border-2 border-red-200 rounded-lg focus:border-red-600 focus:outline-none transition-colors bg-white hover:border-red-300"
+            />
+          </div>
+
+          {/* Thumbnail Upload */}
+          <div className="mb-8">
+            <label className="block mb-3 text-gray-800 flex items-center gap-3 text-xl">
+              <Image className="w-6 h-6 text-red-600" /> Video Thumbnail
+            </label>
+            <div className="relative">
+              <input
+                id="thumbnail"
+                type="file"
+                accept="image/*"
+                onChange={handleThumbnailChange}
+                required
+                className="hidden"
+              />
+              <label
+                htmlFor="thumbnail"
+                className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-red-300 rounded-lg cursor-pointer hover:border-red-600 transition-all bg-red-50/30 hover:bg-red-50"
+              >
+                {thumbnailPreview ? (
+                  <div className="relative w-full h-full">
+                    <img
+                      src={thumbnailPreview}
+                      alt="Thumbnail preview"
+                      className="w-full h-full object-cover rounded-lg"
+                    />
+                    <div className="absolute top-2 right-2 bg-red-600 text-white px-3 py-1 rounded text-xs shadow-lg">
+                      Preview
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center">
+                    <div className="bg-red-100 p-4 rounded-full mb-3">
+                      <Upload className="w-8 h-8 text-red-600" />
+                    </div>
+                    <span className="text-gray-700">Click to upload thumbnail</span>
+                    <span className="text-sm text-gray-500 mt-1">PNG, JPG up to 10MB</span>
+                  </div>
+                )}
+              </label>
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-4 px-6 bg-white text-red-600 border-2 border-red-600 rounded-full transition-all duration-300 ease-in-out hover:bg-red-600 hover:text-white hover:scale-105 active:scale-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-white disabled:hover:text-red-600 shadow-lg hover:shadow-xl"
+          >
+            <span className="text-lg">
+              {isLoading ? '⏳ Analyzing Your Content...' : '🎯 Predict My Virality!'}
+            </span>
+          </button>
+        </form>
+
+        {/* Results */}
+        {prediction && (
+          <div className="bg-white border-2 border-red-600 rounded-2xl p-8 shadow-2xl animate-fadeIn">
+            <div className="text-center mb-8">
+              <div className="inline-block bg-gradient-to-r from-red-600 to-red-500 text-white px-8 py-3 rounded-full shadow-lg mb-4">
+                <h2 className="text-2xl">🎉 Your Prediction Results</h2>
+              </div>
+              <p className="text-gray-600">Based on advanced AI analysis</p>
+            </div>
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Views */}
+              <div className="bg-gradient-to-br from-red-50 to-white rounded-xl p-8 border-2 border-red-200 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="w-20 h-20 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center shadow-lg">
+                    <Eye className="w-10 h-10 text-white" />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-gray-600 mb-2 text-lg">Predicted Views</p>
+                  <p className="text-5xl text-red-600 mb-1" style={{ fontFamily: 'Arial, sans-serif' }}>
+                    {formatNumber(prediction.views)}
+                  </p>
+                  <div className="inline-block bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm mt-2">
+                    👀 Visibility Score
+                  </div>
+                </div>
+              </div>
+
+              {/* Likes */}
+              <div className="bg-gradient-to-br from-red-50 to-white rounded-xl p-8 border-2 border-red-200 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="w-20 h-20 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center shadow-lg">
+                    <ThumbsUp className="w-10 h-10 text-white" />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-gray-600 mb-2 text-lg">Predicted Likes</p>
+                  <p className="text-5xl text-red-600 mb-1" style={{ fontFamily: 'Arial, sans-serif' }}>
+                    {formatNumber(prediction.likes)}
+                  </p>
+                  <div className="inline-block bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm mt-2">
+                    👍 Engagement Score
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 🔌 BACKEND CONNECTION NEEDED: Display additional prediction metrics here
+                 For example: engagement rate, estimated revenue, best posting time, etc.
+                 Access these from your API response */}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
