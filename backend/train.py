@@ -86,12 +86,12 @@ x3_input = layers.Input(shape=(12,), name='Group3_Input')
 x3 = layers.Dense(64, activation='relu')(x3_input)
 x3 = layers.BatchNormalization()(x3)
 x3 = layers.Dropout(0.2)(x3)
-x3 = layers.Dense(32, activation='relu')(x3)
+x3 = layers.Dense(32, activation='relu', name='Group3_Final')(x3)
 x3 = layers.BatchNormalization()(x3)
 
 # x4 -> binarizer
 x4_input = layers.Input(shape=(500,), name='Group4_Input')
-x4 = layers.Dense(32, activation='relu', kernel_regularizer=regularizers.l1(0.01))(x4_input)
+x4 = layers.Dense(32, activation='relu', kernel_regularizer=regularizers.l1(0.01), name='Group4_Final')(x4_input)
 
 # x5 -> main_tag
 x5_vocab = data['main_tag'].unique() 
