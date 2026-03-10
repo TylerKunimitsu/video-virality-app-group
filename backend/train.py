@@ -1,4 +1,3 @@
-from state import data
 import tensorflow as tf
 from tensorflow.keras import layers, models, regularizers
 from tensorflow.keras.applications import EfficientNetB0
@@ -6,6 +5,8 @@ from sklearn.preprocessing import StandardScaler
 import pandas as pd
 import numpy as np
 import h5py
+
+data = pd.read_csv('processedUSvideos.csv')
 
 # =============================
 # REMOVE LATER
@@ -112,14 +113,13 @@ model.compile(optimizer='adam', loss='mse')
 # ==========================================
 
 # Prepare NumPy/Pandas Data in RAM
-x_group2 = np.stack(data['description_semantics'])
+x_group2 = np.load('description_semantics.npy')
 
-x3_sentiment = data['description_sentiment'].apply(pd.Series)
-x3_df = pd.concat([data[['title_cLength', 'title_hasNumber', 'title_capsRatio', 'title_exCount', 'title_endInQ', 'title_infoDensity', 'tags_count', 'tags_title_overlapRatio', 'description_tokenCounts']], x3_sentiment[['Negative', 'Neutral', 'Positive']]], axis=1)
+x3_df = data[['title_cLength', 'title_hasNumber', 'title_capsRatio', 'title_exCount', 'title_endInQ', 'title_infoDensity', 'tags_count', 'tags_title_overlapRatio', 'description_tokenCounts', 'Negative', 'Neutral', 'Positive']]
 scaler = StandardScaler()
 x_group3 = scaler.fit_transform(x3_df.values)
 
-x_group4 = np.array(data['topTagsBinarized'].tolist())
+x_group4 = np.load('top_tags_binarized.npy')
 x_group5 = data['main_tag'].values
 
 y = np.log1p(data[['views', 'likes']].values)

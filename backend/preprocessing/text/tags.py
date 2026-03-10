@@ -75,5 +75,5 @@ tag_binarized = mlb.fit_transform(data['tags_filtered']) # Returns a matrix (2D 
 
 data['topTagsBinarized'] = list(tag_binarized)
 
-print(data['tags_list'].head(5))
-print(data[['tags_count', 'main_tag', 'tags_title_overlapRatio', 'topTagsBinarized']].head(5))
+# print(data['tags_list'].head(5))
+# print(data[['tags_count', 'main_tag', 'tags_title_overlapRatio', 'topTagsBinarized']].head(5))

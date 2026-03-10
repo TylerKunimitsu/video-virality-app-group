@@ -40,4 +40,6 @@ def semantic_vectors(text):
 
 data['description_semantics'] = data['description'].apply(semantic_vectors)
 
-print(data['description_semantics'].head(1))
+data.to_csv('USvideos.csv', index=False)
+
+#print(data['description_semantics'].head(1))
