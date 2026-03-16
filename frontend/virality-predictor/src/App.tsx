@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, ThumbsUp, Upload, Play, FileText, MessageSquare, Image, Tag } from 'lucide-react';
+import { Eye, ThumbsUp, Upload, Play, FileText, MessageSquare, Image, Tag, TrendingUp, BarChart2 } from 'lucide-react';
 
 export default function App() {
   const [title, setTitle] = useState('');
@@ -40,8 +40,9 @@ export default function App() {
     }
 
     try {
-      // 2. Send the package to our new Python Flask server
-      const response = await fetch('http://localhost:5000/predict', {
+      // 2. Send the package to the Python Flask server
+      // FIX: route is /api/predict (not /predict) to match app.py's @app.route('/api/predict')
+      const response = await fetch('http://localhost:5000/api/predict', {
         method: 'POST',
         body: formData,
       });
@@ -52,8 +53,8 @@ export default function App() {
 
       // 3. Receive the prediction and update the UI
       const data = await response.json();
-      
-      if (data.error) {
+
+      if (!data.success || data.error) {
         console.error("Backend Error:", data.error);
         alert("There was an error processing your prediction.");
       } else {
@@ -62,10 +63,9 @@ export default function App() {
 
     } catch (error) {
       console.error("Connection Error:", error);
-      alert("Could not connect to the backend server. Make sure server.py is running!");
+      alert("Could not connect to the backend server. Make sure app.py is running!");
     } finally {
-      // Turn off the loading animation
-      setIsLoading(false); 
+      setIsLoading(false);
     }
   };
 
@@ -78,13 +78,26 @@ export default function App() {
     return num.toString();
   };
 
+  // Derived metrics computed from the views + likes the backend returns
+  const getEngagementRate = (views, likes) => {
+    if (!views || views === 0) return '0.00%';
+    return ((likes / views) * 100).toFixed(2) + '%';
+  };
+
+  const getViralityTier = (views) => {
+    if (views >= 10_000_000) return { label: '🔥 Mega Viral',    color: 'text-red-600' };
+    if (views >= 1_000_000)  return { label: '🚀 Viral',         color: 'text-orange-500' };
+    if (views >= 100_000)    return { label: '📈 Trending',       color: 'text-yellow-600' };
+    if (views >= 10_000)     return { label: '👍 Solid',          color: 'text-green-600' };
+    return                          { label: '🌱 Growing',        color: 'text-blue-500' };
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-red-50 to-white">
       {/* YouTube-themed Header Bar */}
       <div className="bg-white border-b-2 border-red-600 shadow-md sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 py-4">
           <div className="flex items-center gap-3">
-            {/* YouTube Logo */}
             <div className="flex items-center gap-2">
               <div className="bg-red-600 rounded-lg p-2 shadow-lg">
                 <Play className="w-8 h-8 text-white fill-white" />
@@ -228,7 +241,9 @@ export default function App() {
               </div>
               <p className="text-gray-600">Based on advanced AI analysis</p>
             </div>
-            <div className="grid md:grid-cols-2 gap-6">
+
+            {/* Row 1: Views + Likes (from backend) */}
+            <div className="grid md:grid-cols-2 gap-6 mb-6">
               {/* Views */}
               <div className="bg-gradient-to-br from-red-50 to-white rounded-xl p-8 border-2 border-red-200 shadow-lg hover:shadow-xl transition-all hover:scale-105">
                 <div className="flex items-center justify-center mb-4">
@@ -266,9 +281,44 @@ export default function App() {
               </div>
             </div>
 
-            {/* 🔌 BACKEND CONNECTION NEEDED: Display additional prediction metrics here
-                 For example: engagement rate, estimated revenue, best posting time, etc.
-                 Access these from your API response */}
+            {/* Row 2: Derived metrics (computed from views + likes) */}
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Engagement Rate */}
+              <div className="bg-gradient-to-br from-red-50 to-white rounded-xl p-8 border-2 border-red-200 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="w-20 h-20 bg-gradient-to-br from-red-400 to-red-500 rounded-full flex items-center justify-center shadow-lg">
+                    <BarChart2 className="w-10 h-10 text-white" />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-gray-600 mb-2 text-lg">Engagement Rate</p>
+                  <p className="text-5xl text-red-600 mb-1" style={{ fontFamily: 'Arial, sans-serif' }}>
+                    {getEngagementRate(prediction.views, prediction.likes)}
+                  </p>
+                  <div className="inline-block bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm mt-2">
+                    📊 Likes ÷ Views
+                  </div>
+                </div>
+              </div>
+
+              {/* Virality Tier */}
+              <div className="bg-gradient-to-br from-red-50 to-white rounded-xl p-8 border-2 border-red-200 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="w-20 h-20 bg-gradient-to-br from-red-400 to-red-500 rounded-full flex items-center justify-center shadow-lg">
+                    <TrendingUp className="w-10 h-10 text-white" />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-gray-600 mb-2 text-lg">Virality Tier</p>
+                  <p className={`text-3xl font-semibold mb-1 ${getViralityTier(prediction.views).color}`}>
+                    {getViralityTier(prediction.views).label}
+                  </p>
+                  <div className="inline-block bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm mt-2">
+                    🏆 Overall Potential
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
