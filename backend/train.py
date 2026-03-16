@@ -64,6 +64,8 @@ class MultimodalGenerator(tf.keras.utils.Sequence):
             'Group4_Input': batch_x4, 
             'Group5_Input': batch_x5
         }, batch_y
+
+        
 # ==========================================
 # 2. Setting up tf inputs
 # ==========================================
