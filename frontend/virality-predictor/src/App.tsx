@@ -26,29 +26,47 @@ export default function App() {
     e.preventDefault();
     setIsLoading(true);
 
-    // 🔌 BACKEND CONNECTION NEEDED: Replace this mock API call with your actual backend endpoint
-    // Send the form data to your prediction API
-    // Example:
-    // const formData = new FormData();
-    // formData.append('title', title);
-    // formData.append('description', description);
-    // formData.append('tags', tags);
-    // if (thumbnail) formData.append('thumbnail', thumbnail);
-    // 
-    // const response = await fetch('YOUR_API_ENDPOINT', {
-    //   method: 'POST',
-    //   body: formData,
-    // });
-    // const data = await response.json();
-    // setPrediction({ views: data.predicted_views, likes: data.predicted_likes });
-
-    // Mock prediction (remove this when connecting to backend)
-    setTimeout(() => {
-      const mockViews = Math.floor(Math.random() * 1000000) + 10000;
-      const mockLikes = Math.floor(mockViews * (Math.random() * 0.15 + 0.05));
-      setPrediction({ views: mockViews, likes: mockLikes });
+    // 1. Pack all the form data into a neat package
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('description', description);
+    formData.append('tags', tags);
+    if (thumbnail) {
+      formData.append('thumbnail', thumbnail);
+    } else {
+      alert("Please upload a thumbnail!");
       setIsLoading(false);
-    }, 1500);
+      return;
+    }
+
+    try {
+      // 2. Send the package to our new Python Flask server
+      const response = await fetch('http://localhost:5000/predict', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server responded with a ${response.status} status.`);
+      }
+
+      // 3. Receive the prediction and update the UI
+      const data = await response.json();
+      
+      if (data.error) {
+        console.error("Backend Error:", data.error);
+        alert("There was an error processing your prediction.");
+      } else {
+        setPrediction({ views: data.views, likes: data.likes });
+      }
+
+    } catch (error) {
+      console.error("Connection Error:", error);
+      alert("Could not connect to the backend server. Make sure server.py is running!");
+    } finally {
+      // Turn off the loading animation
+      setIsLoading(false); 
+    }
   };
 
   const formatNumber = (num) => {
