@@ -1,33 +1,101 @@
-from state import data
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import os
+from werkzeug.utils import secure_filename
 
-import runpy
-import pandas as pd
-import numpy as np
-import h5py
+# Import your shiny new prediction function!
+from predict import predict_virality
 
-# --- RUN THIS RIGHT BEFORE data.dropna(...) ---
+app = Flask(__name__)
 
-# 1. Figure out which rows we are KEEPING
-# This captures the original index numbers (e.g., [0, 1, 3, 4, 7...])
-valid_indices = data.dropna(subset=['views', 'likes']).index.values
+# CORS allows your frontend (like React or vanilla JS) to talk to this backend 
+# without browser security blocking the request.
+CORS(app) 
 
-print(f"We are keeping {len(valid_indices)} rows.")
+# Create a temporary folder to hold user image uploads
+UPLOAD_FOLDER = 'temp_uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# 2. Open your partner's H5 file
-with h5py.File('processed_images.h5', 'r') as hf:
-    # Load all the images into memory
-    all_images = hf['images'][:] 
+@app.route('/api/predict', methods=['POST'])
+def predict_endpoint():
+    try:
+        # 1. Grab the text inputs from the frontend's form data
+        title = request.form.get('title', '')
+        description = request.form.get('description', '')
+        tags = request.form.get('tags', '')
+
+        # 2. Grab the uploaded thumbnail file
+        if 'thumbnail' not in request.files:
+            return jsonify({'success': False, 'error': 'No thumbnail uploaded'}), 400
+            
+        file = request.files['thumbnail']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'Empty image file'}), 400
+
+        # 3. Save the image temporarily so predict.py can read it
+        filename = secure_filename(file.filename)
+        image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(image_path)
+
+        # 4. RUN THE AI! Pass everything to your predict.py function
+        print(f"Processing prediction for: {title}")
+        results = predict_virality(title, description, tags, image_path)
+
+        # 5. Clean up: Delete the temporary image so your server's hard drive doesn't fill up
+        if os.path.exists(image_path):
+            os.remove(image_path)
+
+        # 6. Send the predicted views and likes back to the frontend!
+        return jsonify({
+            'success': True,
+            'views': results['views'],
+            'likes': results['likes']
+        })
+
+    except Exception as e:
+        print(f"Server Error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+if __name__ == '__main__':
+    print("🚀 Starting AI Backend Server on port 5000...")
+    app.run(debug=True, port=5000)
+
+
+
+
+"""Below is preprocessing stuff"""
+
+# from state import data
+
+# import runpy
+# import pandas as pd
+# import numpy as np
+# import h5py
+
+# # --- RUN THIS RIGHT BEFORE data.dropna(...) ---
+
+# # 1. Figure out which rows we are KEEPING
+# # This captures the original index numbers (e.g., [0, 1, 3, 4, 7...])
+# valid_indices = data.dropna(subset=['views', 'likes']).index.values
+
+# print(f"We are keeping {len(valid_indices)} rows.")
+
+# # 2. Open your partner's H5 file
+# with h5py.File('processed_images.h5', 'r') as hf:
+#     # Load all the images into memory
+#     all_images = hf['images'][:] 
     
-    # 3. Slice the array! 
-    # This instantly keeps only the images that match your valid CSV rows
-    aligned_images = all_images[valid_indices]
+#     # 3. Slice the array! 
+#     # This instantly keeps only the images that match your valid CSV rows
+#     aligned_images = all_images[valid_indices]
 
-# 4. Save to a NEW, perfectly aligned H5 file
-with h5py.File('aligned_images.h5', 'w') as hf:
-    hf.create_dataset('images', data=aligned_images)
+# # 4. Save to a NEW, perfectly aligned H5 file
+# with h5py.File('aligned_images.h5', 'w') as hf:
+#     hf.create_dataset('images', data=aligned_images)
 
-print(f"Original H5 shape: {all_images.shape}")
-print(f"New aligned H5 shape: {aligned_images.shape}")
+# print(f"Original H5 shape: {all_images.shape}")
+# print(f"New aligned H5 shape: {aligned_images.shape}")
 
 # data['title'] = data['title'].fillna('')
 # data['description'] = data['description'].fillna('')

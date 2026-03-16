@@ -45,4 +45,4 @@ X_images = np.load(byte_stream)
 
 
 # Create the visual branch
-img_input, img_features = build_visual_branch_transfer()
+img_input, img_features = build_visual_branch_custom()

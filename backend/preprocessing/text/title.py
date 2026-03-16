@@ -21,11 +21,12 @@ root_dir = Path(__file__).resolve().parent.parent.parent
 
 sys.path.insert(0, str(root_dir))
 
-from state import data
-
 import pandas as pd
 import re
 import spacy
+
+# Load small english model
+nlp = spacy.load("en_core_web_sm")
 
 def capsRatio(text):
     sum = 0
@@ -33,15 +34,6 @@ def capsRatio(text):
         if c.isupper(): sum+=1
 
     return sum/len(text) if len(text) > 0 else 0
-
-data['title_cLength'] = data['title'].str.len()
-data['title_hasNumber'] = data['title'].str.contains(r'\d').astype(int)
-data['title_capsRatio'] = data['title'].apply(lambda x: capsRatio(x))
-data['title_exCount'] = data['title'].str.count('!')
-data['title_endInQ'] = data['title'].apply(lambda x: 1 if len(x) > 0 and x.strip()[-1]=='?' else 0)
-
-# Load small english model
-nlp = spacy.load("en_core_web_sm")
 
 def infoDensity(text):
     if pd.isnull(text) or text.strip() == "":
@@ -52,10 +44,22 @@ def infoDensity(text):
     content_tags = {"NOUN", "PROPN", "VERB", "ADJ", "ADV"}
 
     total_words = [token for token in doc if not token.is_punct]
+
+    # SAFETY CHECK: Prevent ZeroDivisionError if title is only punctuation/emojis
+    if len(total_words) == 0:
+        return 0.0
+
     content_words = [token for token in total_words if token.pos_ in content_tags]
 
     return len(content_words)/len(total_words)
 
-data['title_infoDensity'] = data['title'].apply(infoDensity).astype(float)
+if __name__ == "__main__":
+    from state import data
+    data['title_cLength'] = data['title'].str.len()
+    data['title_hasNumber'] = data['title'].str.contains(r'\d').astype(int)
+    data['title_capsRatio'] = data['title'].apply(lambda x: capsRatio(x))
+    data['title_exCount'] = data['title'].str.count('!')
+    data['title_endInQ'] = data['title'].apply(lambda x: 1 if len(x) > 0 and x.strip()[-1]=='?' else 0)
+    data['title_infoDensity'] = data['title'].apply(infoDensity).astype(float)
 
 #print(data[['title_cLength', 'title_hasNumber', 'title_capsRatio', 'title_exCount', 'title_endInQ', 'title_infoDensity']].head(1))

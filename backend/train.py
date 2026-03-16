@@ -4,6 +4,7 @@ from tensorflow.keras.applications import EfficientNetB0
 from sklearn.preprocessing import StandardScaler
 import pandas as pd
 import numpy as np
+import joblib
 import h5py
 
 data = pd.read_csv('processedUSvideos.csv')
@@ -114,25 +115,30 @@ model.compile(optimizer='adam', loss='mse')
 # 3. Fitting data into the model
 # ==========================================
 
-# Prepare NumPy/Pandas Data in RAM
-x_group2 = np.load('description_semantics.npy')
-
-x3_df = data[['title_cLength', 'title_hasNumber', 'title_capsRatio', 'title_exCount', 'title_endInQ', 'title_infoDensity', 'tags_count', 'tags_title_overlapRatio', 'description_tokenCounts', 'Negative', 'Neutral', 'Positive']]
-scaler = StandardScaler()
-x_group3 = scaler.fit_transform(x3_df.values)
-
-x_group4 = np.load('top_tags_binarized.npy')
-x_group5 = data['main_tag'].values
+# Create a master list of all row indices
 
 y = np.log1p(data[['views', 'likes']].values)
 
-# Create a master list of all row indices
 all_indices = np.arange(len(y))
 
 # Manually split indices at 80%
 split_idx = int(0.8 * len(y))
 train_idx = all_indices[:split_idx]
 val_idx = all_indices[split_idx:]
+
+# Prepare NumPy/Pandas Data in RAM
+x_group2 = np.load('description_semantics.npy')
+
+x3_df = data[['title_cLength', 'title_hasNumber', 'title_capsRatio', 'title_exCount', 'title_endInQ', 'title_infoDensity', 'tags_count', 'tags_title_overlapRatio', 'description_tokenCounts', 'Negative', 'Neutral', 'Positive']]
+scaler = StandardScaler()
+scaler.fit(x3_df.values[:split_idx])
+x_group3 = scaler.transform(x3_df.values)
+
+joblib.dump(scaler, 'scaler.pkl')
+print("Saved scaler.pkl successfully!")
+
+x_group4 = np.load('top_tags_binarized.npy')
+x_group5 = data['main_tag'].values
 
 # Create Training Generator 
 train_generator = MultimodalGenerator(
@@ -166,6 +172,9 @@ model.fit(
     validation_data=val_generator,
     epochs=100
 )
+
+model.save('virality_model.keras')
+print("✅ Model successfully saved to 'virality_model.keras'!")
 """
 
 # !!!!!!!! DELETE THE FOLLOWING LATER (THIS IS JUST FOR A TEST RUN OF THE MODEL) !!!!!!!! 
