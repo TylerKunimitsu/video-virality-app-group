@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras import layers, models, regularizers
 from tensorflow.keras.applications import EfficientNetB0
+from tensorflow.keras.callbacks import CSVLogger, EarlyStopping
 from sklearn.preprocessing import StandardScaler
 import pandas as pd
 import numpy as np
@@ -169,13 +170,24 @@ val_generator = MultimodalGenerator(
     batch_size=32
 )
 
-# Comment this back in once dry/test runs are finished
+# Define the "Stop" rule
+early_stopping = EarlyStopping(
+    monitor='val_loss', 
+    patience=10,             # Wait 10 epochs to see if it improves again
+    restore_best_weights=True # CRITICAL: Rolls the model back to its best version
+)
+
+# Setup the logger
+# 'append=True' is great because if your training crashes and you restart, 
+# it won't delete your previous progress.
+csv_logger = CSVLogger('training_history.csv', append=True, separator=',')
 
 # Train using the generators! 
 model.fit(
     train_generator,
     validation_data=val_generator,
-    epochs=100
+    epochs=100,
+    callbacks=[csv_logger, early_stopping] # The model will now "watch itself"
 )
 
 model.save('virality_model.keras')
