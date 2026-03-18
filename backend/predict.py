@@ -85,15 +85,15 @@ def predict_virality(title, description, tags_string, image_path):
     
     # Convert to 2D array and scale it
     x3_tabular = np.array([tabular_features])
-    x3_scaled = scaler.transform(x3_tabular) # Shape: (1, 12)
+    x3_scaled = scaler.transform(x3_tabular).astype('float32') # Shape: (1, 12)
     
     # --- GROUP 4: BINARIZED TAGS ---
     # Filter out tags that the model has never seen before
     valid_tags = [tag for tag in tags_list if tag in mlb.classes_]
-    x4_tags = mlb.transform([valid_tags]) # Shape: (1, 500)
+    x4_tags = mlb.transform([valid_tags]).astype('int32') # Shape: (1, 500)
     
     # --- GROUP 5: MAIN TAG ---
-    x5_main_tag = np.array([[main_tag]]) # Shape: (1, 1) string array
+    x5_main_tag = tf.constant([[main_tag]], dtype=tf.string) # Shape: (1, 1) string array
     
     # --- BUILD INPUT DICTIONARY ---
     model_inputs = {
