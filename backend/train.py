@@ -50,12 +50,16 @@ class MultimodalGenerator(tf.keras.utils.Sequence):
         # Use those IDs to pull the CORRECT images from the HDF5
         # We use list-based indexing for the H5 file to ensure alignment
         batch_x1 = self.hf['images'][batch_indices.tolist()]
+
+        # Nuclear option for x5
+        raw_x5 = self.x5_data[start:end]
+        batch_x5 = tf.constant(raw_x5, dtype=tf.string)
         
         # The metadata is already sliced, so we use standard local indexing
         batch_x2 = self.x2_data[start:end]
         batch_x3 = self.x3_data[start:end]
         batch_x4 = self.x4_data[start:end]
-        batch_x5 = self.x5_data[start:end]
+        batch_x5 = tf.reshape(batch_x5, [-1,1]) # Force the strings into a fixed-length Unicode numpy array
         batch_y  = self.y_data[start:end]
 
         return {
@@ -117,7 +121,7 @@ model.compile(optimizer='adam', loss='mse')
 
 # Create a master list of all row indices
 
-y = np.log1p(data[['views', 'likes']].values)
+y = np.log1p(data[['views', 'likes']].values).astype('float32')
 
 all_indices = np.arange(len(y))
 
@@ -130,15 +134,16 @@ val_idx = all_indices[split_idx:]
 x_group2 = np.load('description_semantics.npy')
 
 x3_df = data[['title_cLength', 'title_hasNumber', 'title_capsRatio', 'title_exCount', 'title_endInQ', 'title_infoDensity', 'tags_count', 'tags_title_overlapRatio', 'description_tokenCounts', 'Negative', 'Neutral', 'Positive']]
+x3_df = x3_df.fillna(0).astype('float32')
 scaler = StandardScaler()
 scaler.fit(x3_df.values[:split_idx])
-x_group3 = scaler.transform(x3_df.values)
+x_group3 = scaler.transform(x3_df.values).astype('float32')
 
 joblib.dump(scaler, 'scaler.pkl')
 print("Saved scaler.pkl successfully!")
 
-x_group4 = np.load('top_tags_binarized.npy')
-x_group5 = data['main_tag'].values
+x_group4 = np.load('top_tags_binarized.npy').astype('int32')
+x_group5 = data['main_tag'].fillna('none').astype(str).values
 
 # Create Training Generator 
 train_generator = MultimodalGenerator(
@@ -165,7 +170,7 @@ val_generator = MultimodalGenerator(
 )
 
 # Comment this back in once dry/test runs are finished
-""" 
+
 # Train using the generators! 
 model.fit(
     train_generator,
@@ -175,7 +180,7 @@ model.fit(
 
 model.save('virality_model.keras')
 print("✅ Model successfully saved to 'virality_model.keras'!")
-"""
+
 
 # !!!!!!!! DELETE THE FOLLOWING LATER (THIS IS JUST FOR A TEST RUN OF THE MODEL) !!!!!!!! 
 
@@ -184,29 +189,38 @@ print("✅ Model successfully saved to 'virality_model.keras'!")
 # ==========================================
 
 # Create a tiny subset of indices for testing
-test_indices = all_indices[:10] 
+# test_indices = all_indices[:10] 
 
-try:
-    print("\n--- Initializing Dry Run Generator ---")
-    dry_run_gen = MultimodalGenerator(
-        h5_path='processed_images.h5',
-        indices=test_indices,
-        x2_data=x_group2[:10],
-        x3_data=x_group3[:10],
-        x4_data=x_group4[:10],
-        x5_data=x_group5[:10],
-        y_data=y[:10],
-        batch_size=2
-    )
+# try:
+#     print("\n--- Initializing Dry Run Generator ---")
+#     dry_run_gen = MultimodalGenerator(
+#         h5_path='processed_images.h5',
+#         indices=test_indices,
+#         x2_data=x_group2[:10],
+#         x3_data=x_group3[:10],
+#         x4_data=x_group4[:10],
+#         x5_data=x_group5[:10],
+#         y_data=y[:10],
+#         batch_size=2
+#     )
 
-    print("--- Starting Model Fit (1 Epoch, 5 Batches) ---")
-    # We run for 1 epoch just to see the progress bar move
-    model.fit(dry_run_gen, epochs=1)
+#     print("\n--- X-RAY DIAGNOSTIC ---")
+#     sample_inputs, sample_labels = dry_run_gen[0]
     
-    print("\n✅ DRY RUN SUCCESSFUL!")
-    print("The pipeline is aligned. You are ready for full training.")
+#     for key, val in sample_inputs.items():
+#         print(f"{key} -> Shape: {val.shape} | Dtype: {val.dtype}")
+    
+#     print(f"Labels (y) -> Shape: {sample_labels.shape} | Dtype: {sample_labels.dtype}")
+#     print("------------------------\n")
 
-except Exception as e:
-    print("\n❌ DRY RUN FAILED")
-    print(f"Error Type: {type(e).__name__}")
-    print(f"Error Message: {e}")
+#     print("--- Starting Model Fit (1 Epoch, 5 Batches) ---")
+#     # We run for 1 epoch just to see the progress bar move
+#     model.fit(dry_run_gen, epochs=1)
+    
+#     print("\n✅ DRY RUN SUCCESSFUL!")
+#     print("The pipeline is aligned. You are ready for full training.")
+
+# except Exception as e:
+#     print("\n❌ DRY RUN FAILED")
+#     print(f"Error Type: {type(e).__name__}")
+#     print(f"Error Message: {e}")
